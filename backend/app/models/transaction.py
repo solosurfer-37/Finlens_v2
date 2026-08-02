@@ -1,0 +1,77 @@
+from datetime import datetime
+
+from decimal import Decimal
+
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database.base import Base
+
+
+
+
+class Transaction(Base):
+    """
+    Represents a single financial transaction.
+    """
+
+    __tablename__ = "transactions"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    transaction_reference: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    investigation_id: Mapped[int] = mapped_column(
+        ForeignKey("investigations.id"),
+        nullable=False,
+        index=True,
+    )
+
+    sender_account_id: Mapped[int] = mapped_column(
+        ForeignKey("accounts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    receiver_account_id: Mapped[int] = mapped_column(
+        ForeignKey("accounts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2),
+        nullable=False,
+    )
+
+    currency: Mapped[str] = mapped_column(
+        String(10),
+        default="INR",
+        nullable=False,
+    )
+
+    transaction_time: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
