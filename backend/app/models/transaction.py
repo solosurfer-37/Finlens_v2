@@ -75,3 +75,23 @@ class Transaction(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+
+from sqlalchemy.orm import relationship
+
+investigation: Mapped["Investigation"] = relationship(
+    back_populates="transactions",
+    lazy="raise",
+)
+
+sender_account: Mapped["Account"] = relationship(
+    foreign_keys="Transaction.sender_account_id",
+    back_populates="sent_transactions",
+    lazy="raise",
+)
+
+receiver_account: Mapped["Account"] = relationship(
+    foreign_keys="Transaction.receiver_account_id",
+    back_populates="received_transactions",
+    lazy="raise",
+)

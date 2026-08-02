@@ -1,6 +1,4 @@
-from fastapi import FastAPI
-
-from app.database.database import create_tables
+﻿from fastapi import FastAPI
 
 app = FastAPI(
     title="FinLens Backend",
@@ -8,11 +6,6 @@ app = FastAPI(
 )
 
 
-@app.on_event("startup")
-def startup():
-    create_tables()
-
-
 @app.get("/")
 def root():
-    return {"message": "FinLens Backend Running 🚀"}
+    return {"message": "FinLens Backend Running"}

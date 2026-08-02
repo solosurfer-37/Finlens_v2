@@ -58,3 +58,13 @@ class Investigation(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+
+
+
+
+from sqlalchemy.orm import relationship
+
+transactions: Mapped[list["Transaction"]] = relationship(
+    back_populates="investigation",
+    lazy="raise",
+)
