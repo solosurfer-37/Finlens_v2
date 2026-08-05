@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-
+from app.detectors.fan_out import FanOutDetector
 from app.engine.fraud_signal import FraudSignal
 from app.detectors.large_transfer import LargeTransferDetector
 from app.models.transaction import Transaction
@@ -10,6 +10,7 @@ class DetectionEngine:
         self.db = db
         self.detectors = [
             LargeTransferDetector(),
+            FanOutDetector(),
         ]
 
     def run(self, transactions: list[Transaction]) -> list[FraudSignal]:
