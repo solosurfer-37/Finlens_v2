@@ -5,6 +5,10 @@ from app.detectors.large_transfer import LargeTransferDetector
 from app.models.transaction import Transaction
 from app.detectors.velocity import VelocityDetector
 from app.detectors.cycle_detection import CycleDetectionDetector
+from app.detectors.benford import BenfordDetector
+
+
+
 class DetectionEngine:
     def __init__(self, db: Session):
         self.db = db
@@ -13,6 +17,7 @@ class DetectionEngine:
            FanOutDetector(),
            VelocityDetector(),
            CycleDetectionDetector(),
+           BenfordDetector(),
         ]
 
     def run(self, transactions: list[Transaction]) -> list[FraudSignal]:
