@@ -3,15 +3,16 @@ from app.detectors.fan_out import FanOutDetector
 from app.engine.fraud_signal import FraudSignal
 from app.detectors.large_transfer import LargeTransferDetector
 from app.models.transaction import Transaction
-
+from app.detectors.velocity import VelocityDetector
 
 class DetectionEngine:
     def __init__(self, db: Session):
         self.db = db
         self.detectors = [
-            LargeTransferDetector(),
-            FanOutDetector(),
-        ]
+    LargeTransferDetector(),
+    FanOutDetector(),
+    VelocityDetector(),
+]
 
     def run(self, transactions: list[Transaction]) -> list[FraudSignal]:
         signals: list[FraudSignal] = []
