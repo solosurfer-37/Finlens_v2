@@ -6,7 +6,7 @@ from app.models.transaction import Transaction
 from app.detectors.velocity import VelocityDetector
 from app.detectors.cycle_detection import CycleDetectionDetector
 from app.detectors.benford import BenfordDetector
-
+from app.detectors.structuring import StructuringDetector
 
 
 class DetectionEngine:
@@ -18,6 +18,7 @@ class DetectionEngine:
            VelocityDetector(),
            CycleDetectionDetector(),
            BenfordDetector(),
+           StructuringDetector(),
         ]
 
     def run(self, transactions: list[Transaction]) -> list[FraudSignal]:
