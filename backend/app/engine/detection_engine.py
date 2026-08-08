@@ -9,6 +9,8 @@ from app.detectors.benford import BenfordDetector
 from app.detectors.structuring import StructuringDetector
 from app.detectors.dsu import DSUDetector
 from app.detectors.centrality import CentralityDetector
+from app.detectors.watchlist import WatchlistDetector
+
 
 class DetectionEngine:
     def __init__(self, db: Session):
@@ -22,6 +24,7 @@ class DetectionEngine:
            StructuringDetector(),
            DSUDetector(),
            CentralityDetector(),
+           WatchlistDetector(self.db),
         ]
 
     def run(self, transactions: list[Transaction]) -> list[FraudSignal]:
