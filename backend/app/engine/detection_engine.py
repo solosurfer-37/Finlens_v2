@@ -10,7 +10,7 @@ from app.detectors.structuring import StructuringDetector
 from app.detectors.dsu import DSUDetector
 from app.detectors.centrality import CentralityDetector
 from app.detectors.watchlist import WatchlistDetector
-
+from app.detectors.historical_baseline import HistoricalBaselineDetector
 
 class DetectionEngine:
     def __init__(self, db: Session):
@@ -25,6 +25,8 @@ class DetectionEngine:
            DSUDetector(),
            CentralityDetector(),
            WatchlistDetector(self.db),
+           HistoricalBaselineDetector(self.db),
+
         ]
 
     def run(self, transactions: list[Transaction]) -> list[FraudSignal]:
