@@ -3,7 +3,7 @@ from decimal import Decimal
 from app.engine.fraud_signal import FraudSignal
 from app.models.transaction import Transaction
 
-LARGE_TRANSFER_THRESHOLD = Decimal("1000000")  # 10 lakh
+LARGE_TRANSFER_THRESHOLD = Decimal("1000000")
 
 
 class LargeTransferDetector:
@@ -19,6 +19,8 @@ class LargeTransferDetector:
                         detector_name="large_transfer",
                         description=f"Transaction {txn.transaction_reference} of amount {txn.amount} exceeds threshold",
                         severity="high",
+                        related_account_ids=[txn.sender_account_id, txn.receiver_account_id],
+                        related_transaction_ids=[txn.id],
                     )
                 )
 
