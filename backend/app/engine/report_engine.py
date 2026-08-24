@@ -6,7 +6,7 @@ from app.models.evidence import Evidence
 from app.models.report import Report
 from app.repositories.investigation_repository import InvestigationRepository
 from app.repositories.report_repository import ReportRepository
-
+from app.ai.report_generator import AIReportGenerator
 
 class ReportEngine:
     """Compiles Evidence records into a structured, human-readable investigation report."""
@@ -15,6 +15,7 @@ class ReportEngine:
         self.db = db
         self.report_repo = ReportRepository(db)
         self.investigation_repo = InvestigationRepository(db)
+        self.ai_generator = AIReportGenerator()
 
     def generate(self, investigation_id: int, evidence_list: list[Evidence]) -> Report:
         investigation = self.investigation_repo.get_by_id(investigation_id)
@@ -26,11 +27,18 @@ class ReportEngine:
             "low": severity_counts.get("low", 0),
         }
 
-        summary_text = self._build_summary_text(
+        fallback_text = self._build_summary_text(
             investigation.filename,
             investigation.risk_score,
             severity_breakdown,
             evidence_list,
+        )
+
+        summary_text = self.ai_generator.generate_narrative(
+            filename=investigation.filename,
+            risk_score=investigation.risk_score,
+            evidence_list=evidence_list,
+            fallback_text=fallback_text,
         )
 
         report = Report(
