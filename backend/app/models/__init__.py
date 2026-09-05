@@ -4,3 +4,4 @@ from app.models.transaction import Transaction
 from app.models.watchlist import WatchlistEntry
 from app.models.evidence import Evidence
 from app.models.report import Report
+from app.models.user import User
