@@ -1,6 +1,6 @@
 ﻿from fastapi import FastAPI
 
-from app.api import upload, investigation , evidence
+from app.api import upload, investigation , evidence , report
 
 app = FastAPI(
     title="FinLens Backend",
@@ -10,6 +10,7 @@ app = FastAPI(
 app.include_router(upload.router)
 app.include_router(investigation.router)
 app.include_router(evidence.router)
+app.include_router(report.router)
 
 @app.get("/")
 def root():
