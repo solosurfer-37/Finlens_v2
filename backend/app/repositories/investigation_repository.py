@@ -26,6 +26,12 @@ class InvestigationRepository:
     def get_all(self) -> list[Investigation]:
         return self.db.query(Investigation).all()
 
+    def update_transaction_count(self, investigation_id: int, count: int) -> None:
+        investigation = self.db.get(Investigation, investigation_id)
+        if investigation:
+            investigation.total_transactions = count
+            self.db.commit()
+
     def delete(self, investigation: Investigation) -> None:
         self.db.delete(investigation)
         self.db.commit()

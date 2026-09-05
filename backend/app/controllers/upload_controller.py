@@ -1,4 +1,4 @@
-import shutil
+﻿import shutil
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -40,6 +40,7 @@ class UploadController:
         transaction_service.process_rows(investigation.id, rows)
 
         transactions = self.transaction_repo.get_by_investigation(investigation.id)
+        self.investigation_repo.update_transaction_count(investigation.id, len(transactions))
 
         detection_engine = DetectionEngine(self.db)
         signals = detection_engine.run(transactions)
