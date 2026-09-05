@@ -1,7 +1,7 @@
-﻿.env
+.env
 __pycache__/
 *.pyc
 venv/
 .venv/
 uploads/
-test_upload.csv
+test_upload*.csv

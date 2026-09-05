@@ -8,6 +8,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +24,14 @@ class Transaction(Base):
 
     __tablename__ = "transactions"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "investigation_id",
+            "transaction_reference",
+            name="uq_investigation_transaction_reference",
+        ),
+    )
+
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
@@ -31,7 +40,6 @@ class Transaction(Base):
 
     transaction_reference: Mapped[str] = mapped_column(
         String(100),
-        unique=True,
         nullable=False,
         index=True,
     )
