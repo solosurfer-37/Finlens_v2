@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Session
+﻿from sqlalchemy.orm import Session
 
+from app.core.cache import get_cache, set_cache
 from app.engine.fraud_signal import FraudSignal
 from app.repositories.account_repository import AccountRepository
 from app.repositories.evidence_repository import EvidenceRepository
@@ -11,6 +12,7 @@ class GraphController:
     """
     Builds the transaction graph for a given investigation,
     using already-computed Evidence rather than re-running detection.
+    Results are cached in Redis to avoid recomputation on repeated requests.
     """
 
     def __init__(self, db: Session):
@@ -20,6 +22,11 @@ class GraphController:
         self.graph_builder = GraphBuilder()
 
     def get_graph(self, investigation_id: int) -> dict:
+        cache_key = f"graph:{investigation_id}"
+        cached = get_cache(cache_key)
+        if cached is not None:
+            return cached
+
         transactions = self.transaction_repo.get_by_investigation(investigation_id)
 
         account_ids = set()
@@ -44,4 +51,6 @@ class GraphController:
             for e in evidence_list
         ]
 
-        return self.graph_builder.build(transactions, accounts, signals)
+        result = self.graph_builder.build(transactions, accounts, signals)
+        set_cache(cache_key, result, ttl_seconds=300)
+        return result
