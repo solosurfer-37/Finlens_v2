@@ -1,0 +1,27 @@
+﻿# Secrets: never bake into the image
+.env
+.env.*
+
+# Runtime data
+uploads/
+test_upload*.csv
+
+# Python junk
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+
+# VCS and editor
+.git
+.gitignore
+.vscode/
+.idea/
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
