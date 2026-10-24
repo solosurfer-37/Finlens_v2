@@ -63,3 +63,32 @@ def client():
         yield c
     app.dependency_overrides.clear()
     limiter.enabled = True
+
+@pytest.fixture
+def auth_headers(client):
+    def _make(email: str, password: str = "StrongPass123") -> dict:
+        client.post("/auth/register", json={"email": email, "password": password})
+        resp = client.post("/auth/login", json={"email": email, "password": password})
+        return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+    return _make
+
+
+@pytest.fixture
+def sample_csv() -> bytes:
+    header = (
+        "transaction_reference,sender_account_number,sender_account_holder,"
+        "sender_bank_name,receiver_account_number,receiver_account_holder,"
+        "receiver_bank_name,amount,currency,transaction_time"
+    )
+    row = "TX-1,ACC-A,Alice,BankX,ACC-B,Bob,BankY,1200000,INR,2026-01-01 10:00:00"
+    return f"{header}\n{row}\n".encode("utf-8")
+
+@pytest.fixture(autouse=True)
+def mock_gemini(monkeypatch):
+    """Never call the real Gemini API in tests; force the template fallback path."""
+
+    def _fail(self, prompt):
+        raise RuntimeError("Gemini disabled in tests")
+
+    monkeypatch.setattr("app.ai.gemini_client.GeminiClient.generate", _fail)
