@@ -1,4 +1,3 @@
-﻿import shutil
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -9,14 +8,12 @@ from app.repositories.transaction_repository import TransactionRepository
 from app.repositories.evidence_repository import EvidenceRepository
 from app.schemas.investigation_schema import InvestigationCreate
 from app.services.csv_parser import parse_transaction_csv
+from app.services.file_storage import save_upload
 from app.services.transaction_service import TransactionService
 from app.engine.detection_engine import DetectionEngine
 from app.engine.evidence_engine import EvidenceEngine
 from app.engine.report_engine import ReportEngine
 from app.schemas.upload_schema import UploadResponse
-
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 class UploadController:
@@ -27,12 +24,11 @@ class UploadController:
         self.evidence_repo = EvidenceRepository(db)
 
     def handle_upload(self, file: UploadFile) -> UploadResponse:
-        file_path = UPLOAD_DIR / file.filename
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        file_path = save_upload(file)
+        display_name = Path(file.filename or "").name[:255]
 
         investigation = self.investigation_repo.create(
-            InvestigationCreate(filename=file.filename)
+            InvestigationCreate(filename=display_name)
         )
 
         rows = parse_transaction_csv(str(file_path))
