@@ -1,9 +1,13 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.models.transaction import Transaction
 
 
 class Investigation(Base):
@@ -20,6 +24,12 @@ class Investigation(Base):
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
+        index=True,
+    )
+
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
         index=True,
     )
 
@@ -59,12 +69,7 @@ class Investigation(Base):
         nullable=False,
     )
 
-
-
-
-from sqlalchemy.orm import relationship
-
-transactions: Mapped[list["Transaction"]] = relationship(
-    back_populates="investigation",
-    lazy="raise",
-)
+    transactions: Mapped[list["Transaction"]] = relationship(
+        back_populates="investigation",
+        lazy="raise",
+    )

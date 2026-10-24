@@ -17,4 +17,4 @@ def list_evidence(
     current_user: User = Depends(get_current_user),
 ):
     controller = EvidenceController(db)
-    return controller.list_evidence(investigation_id)
+    return controller.list_evidence(investigation_id, current_user.id)

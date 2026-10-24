@@ -16,4 +16,4 @@ def get_graph(
     current_user: User = Depends(get_current_user),
 ):
     controller = GraphController(db)
-    return controller.get_graph(investigation_id)
+    return controller.get_graph(investigation_id, current_user.id)

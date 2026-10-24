@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -17,4 +17,4 @@ def upload_csv(
     current_user: User = Depends(get_current_user),
 ):
     controller = UploadController(db)
-    return controller.handle_upload(file)
+    return controller.handle_upload(file, current_user.id)

@@ -17,4 +17,4 @@ def get_report(
     current_user: User = Depends(get_current_user),
 ):
     controller = ReportController(db)
-    return controller.get_report(investigation_id)
+    return controller.get_report(investigation_id, current_user.id)

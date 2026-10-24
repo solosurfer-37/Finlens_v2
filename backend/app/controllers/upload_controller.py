@@ -23,12 +23,13 @@ class UploadController:
         self.transaction_repo = TransactionRepository(db)
         self.evidence_repo = EvidenceRepository(db)
 
-    def handle_upload(self, file: UploadFile) -> UploadResponse:
+    def handle_upload(self, file: UploadFile, user_id: int) -> UploadResponse:
         file_path = save_upload(file)
         display_name = Path(file.filename or "").name[:255]
 
         investigation = self.investigation_repo.create(
-            InvestigationCreate(filename=display_name)
+            InvestigationCreate(filename=display_name),
+            user_id=user_id,
         )
 
         rows = parse_transaction_csv(str(file_path))

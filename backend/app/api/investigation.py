@@ -16,7 +16,7 @@ def list_investigations(
     current_user: User = Depends(get_current_user),
 ):
     controller = InvestigationController(db)
-    return controller.list_investigations()
+    return controller.list_investigations(current_user.id)
 
 
 @router.get("/{investigation_id}", response_model=InvestigationResponse)
@@ -26,4 +26,4 @@ def get_investigation(
     current_user: User = Depends(get_current_user),
 ):
     controller = InvestigationController(db)
-    return controller.get_investigation(investigation_id)
+    return controller.get_investigation(investigation_id, current_user.id)

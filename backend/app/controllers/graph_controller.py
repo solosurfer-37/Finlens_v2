@@ -1,9 +1,11 @@
-﻿from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from app.core.cache import get_cache, set_cache
 from app.engine.fraud_signal import FraudSignal
 from app.repositories.account_repository import AccountRepository
 from app.repositories.evidence_repository import EvidenceRepository
+from app.repositories.investigation_repository import InvestigationRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.services.graph_builder import GraphBuilder
 
@@ -12,17 +14,28 @@ class GraphController:
     """
     Builds the transaction graph for a given investigation,
     using already-computed Evidence rather than re-running detection.
-    Results are cached in Redis to avoid recomputation on repeated requests.
+    Ownership is verified before the cache is consulted.
+    Results are cached in Redis per user to avoid recomputation.
     """
 
     def __init__(self, db: Session):
+        self.investigation_repo = InvestigationRepository(db)
         self.transaction_repo = TransactionRepository(db)
         self.account_repo = AccountRepository(db)
         self.evidence_repo = EvidenceRepository(db)
         self.graph_builder = GraphBuilder()
 
-    def get_graph(self, investigation_id: int) -> dict:
-        cache_key = f"graph:{investigation_id}"
+    def get_graph(self, investigation_id: int, user_id: int) -> dict:
+        investigation = self.investigation_repo.get_by_id_for_user(
+            investigation_id, user_id
+        )
+        if investigation is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Investigation with id {investigation_id} not found",
+            )
+
+        cache_key = f"graph:{user_id}:{investigation_id}"
         cached = get_cache(cache_key)
         if cached is not None:
             return cached

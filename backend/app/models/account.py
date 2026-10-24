@@ -1,9 +1,13 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.models.transaction import Transaction
 
 
 class Account(Base):
@@ -45,18 +49,14 @@ class Account(Base):
         nullable=False,
     )
 
+    sent_transactions: Mapped[list["Transaction"]] = relationship(
+        foreign_keys="Transaction.sender_account_id",
+        back_populates="sender_account",
+        lazy="raise",
+    )
 
-
-from sqlalchemy.orm import relationship
-
-sent_transactions: Mapped[list["Transaction"]] = relationship(
-    foreign_keys="Transaction.sender_account_id",
-    back_populates="sender_account",
-    lazy="raise",
-)
-
-received_transactions: Mapped[list["Transaction"]] = relationship(
-    foreign_keys="Transaction.receiver_account_id",
-    back_populates="receiver_account",
-    lazy="raise",
-)
+    received_transactions: Mapped[list["Transaction"]] = relationship(
+        foreign_keys="Transaction.receiver_account_id",
+        back_populates="receiver_account",
+        lazy="raise",
+    )

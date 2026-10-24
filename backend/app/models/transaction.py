@@ -1,6 +1,6 @@
 from datetime import datetime
-
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
@@ -10,11 +10,13 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 
-
+if TYPE_CHECKING:
+    from app.models.account import Account
+    from app.models.investigation import Investigation
 
 
 class Transaction(Base):
@@ -84,22 +86,19 @@ class Transaction(Base):
         nullable=False,
     )
 
+    investigation: Mapped["Investigation"] = relationship(
+        back_populates="transactions",
+        lazy="raise",
+    )
 
-from sqlalchemy.orm import relationship
+    sender_account: Mapped["Account"] = relationship(
+        foreign_keys="Transaction.sender_account_id",
+        back_populates="sent_transactions",
+        lazy="raise",
+    )
 
-investigation: Mapped["Investigation"] = relationship(
-    back_populates="transactions",
-    lazy="raise",
-)
-
-sender_account: Mapped["Account"] = relationship(
-    foreign_keys="Transaction.sender_account_id",
-    back_populates="sent_transactions",
-    lazy="raise",
-)
-
-receiver_account: Mapped["Account"] = relationship(
-    foreign_keys="Transaction.receiver_account_id",
-    back_populates="received_transactions",
-    lazy="raise",
-)
+    receiver_account: Mapped["Account"] = relationship(
+        foreign_keys="Transaction.receiver_account_id",
+        back_populates="received_transactions",
+        lazy="raise",
+    )
