@@ -1,4 +1,4 @@
-﻿from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 
@@ -32,6 +32,9 @@ def parse_transaction_csv(file_path: str) -> list[dict]:
         try:
             amount = Decimal(str(row["amount"]))
         except InvalidOperation:
+            raise CSVParseError(f"Invalid amount value: {row['amount']}")
+
+        if not amount.is_finite():
             raise CSVParseError(f"Invalid amount value: {row['amount']}")
 
         if amount <= 0:
