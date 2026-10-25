@@ -1,13 +1,13 @@
 from pathlib import Path
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.repositories.investigation_repository import InvestigationRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.repositories.evidence_repository import EvidenceRepository
 from app.schemas.investigation_schema import InvestigationCreate
-from app.services.csv_parser import parse_transaction_csv
+from app.services.csv_parser import CSVParseError, parse_transaction_csv
 from app.services.file_storage import save_upload
 from app.services.transaction_service import TransactionService
 from app.engine.detection_engine import DetectionEngine
@@ -27,12 +27,17 @@ class UploadController:
         file_path = save_upload(file)
         display_name = Path(file.filename or "").name[:255]
 
+        try:
+            rows = parse_transaction_csv(str(file_path))
+        except CSVParseError as exc:
+            file_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail=str(exc))
+
         investigation = self.investigation_repo.create(
             InvestigationCreate(filename=display_name),
             user_id=user_id,
         )
 
-        rows = parse_transaction_csv(str(file_path))
         transaction_service = TransactionService(self.db)
         transaction_service.process_rows(investigation.id, rows)
 
