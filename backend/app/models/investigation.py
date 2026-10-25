@@ -27,9 +27,9 @@ class Investigation(Base):
         index=True,
     )
 
-    user_id: Mapped[int | None] = mapped_column(
+    user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
 
