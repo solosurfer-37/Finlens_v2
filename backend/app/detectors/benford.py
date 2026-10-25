@@ -18,9 +18,14 @@ class BenfordDetector:
         if len(transactions) < MIN_TRANSACTIONS:
             return []  # not enough data for a statistically meaningful check
 
-        leading_digits = [int(str(abs(txn.amount))[0]) for txn in transactions]
-        counts = Counter(leading_digits)
+        leading_digits = [
+            d for d in (self._leading_digit(txn.amount) for txn in transactions) if d
+        ]
         total = len(leading_digits)
+        if total == 0:
+            return []  # all amounts were zero, nothing to analyse
+
+        counts = Counter(leading_digits)
 
         signals = []
         for digit in range(1, 10):
@@ -32,9 +37,17 @@ class BenfordDetector:
                 signals.append(
                     FraudSignal(
                         detector_name="benford",
-                        description=f"Leading digit {digit} appears {observed:.1%} of the time (expected {expected:.1%}) — possible manipulated data",
+                        description=f"Leading digit {digit} appears {observed:.1%} of the time (expected {expected:.1%}) - possible manipulated data",
                         severity="medium",
                     )
                 )
 
         return signals
+
+    @staticmethod
+    def _leading_digit(amount) -> int:
+        """First significant (non-zero) digit of the absolute amount, 0 if none."""
+        for ch in str(abs(amount)):
+            if ch in "123456789":
+                return int(ch)
+        return 0
