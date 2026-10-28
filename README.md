@@ -1,5 +1,7 @@
 # FinLens - AI Powered Financial Crime Investigation Platform
 
+[![CI](https://github.com/solosurfer-37/Finlens_v2/actions/workflows/ci.yml/badge.svg)](https://github.com/solosurfer-37/Finlens_v2/actions/workflows/ci.yml)
+
 Backend that ingests bank transaction CSVs, detects suspicious behaviour with a pluggable detection engine, scores risk, and generates AI investigation reports.
 
 - Live API: https://finlens-v2.onrender.com
