@@ -3,12 +3,12 @@ from types import SimpleNamespace
 from app.detectors.dsu import DSU, MIN_CLUSTER_SIZE, DSUDetector
 
 
-def make_txn(sender: int, receiver: int) -> SimpleNamespace:
-    return SimpleNamespace(sender_account_id=sender, receiver_account_id=receiver)
+def make_txn(sender: int, receiver: int, txn_id: int = 0) -> SimpleNamespace:
+    return SimpleNamespace(id=txn_id, sender_account_id=sender, receiver_account_id=receiver)
 
 
-def chain(start: int, size: int) -> list[SimpleNamespace]:
-    return [make_txn(start + i, start + i + 1) for i in range(size - 1)]
+def chain(start: int, size: int, start_id: int = 1) -> list[SimpleNamespace]:
+    return [make_txn(start + i, start + i + 1, start_id + i) for i in range(size - 1)]
 
 
 def test_dsu_find_creates_singleton():
@@ -55,14 +55,14 @@ def test_exactly_min_cluster_size_is_flagged():
 
 
 def test_direction_does_not_matter():
-    txns = [make_txn(i + 1, 1) for i in range(1, MIN_CLUSTER_SIZE)]
+    txns = [make_txn(i + 1, 1, i) for i in range(1, MIN_CLUSTER_SIZE)]
     signals = DSUDetector().detect(txns)
 
     assert len(signals) == 1
 
 
 def test_only_large_cluster_is_flagged_when_two_exist():
-    txns = chain(1, MIN_CLUSTER_SIZE) + chain(100, 2)
+    txns = chain(1, MIN_CLUSTER_SIZE) + chain(100, 2, start_id=50)
     signals = DSUDetector().detect(txns)
 
     assert len(signals) == 1
@@ -70,9 +70,22 @@ def test_only_large_cluster_is_flagged_when_two_exist():
 
 
 def test_two_small_clusters_are_not_merged():
-    txns = chain(1, 3) + chain(100, 3)
+    txns = chain(1, 3) + chain(100, 3, start_id=50)
     assert DSUDetector().detect(txns) == []
 
 
 def test_self_loop_is_single_account_cluster():
-    assert DSUDetector().detect([make_txn(1, 1)]) == []
+    assert DSUDetector().detect([make_txn(1, 1, 1)]) == []
+
+
+def test_related_account_ids_are_all_cluster_members():
+    signals = DSUDetector().detect(chain(1, MIN_CLUSTER_SIZE))
+
+    assert signals[0].related_account_ids == list(range(1, MIN_CLUSTER_SIZE + 1))
+
+
+def test_related_transaction_ids_exclude_other_clusters():
+    txns = chain(1, MIN_CLUSTER_SIZE) + chain(100, 2, start_id=50)
+    signals = DSUDetector().detect(txns)
+
+    assert signals[0].related_transaction_ids == list(range(1, MIN_CLUSTER_SIZE))

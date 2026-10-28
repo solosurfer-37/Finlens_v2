@@ -7,7 +7,7 @@ MIN_CLUSTER_SIZE = 5  # clusters with 5+ accounts are worth flagging
 
 
 class DSU:
-    """Disjoint Set Union — tracks which accounts belong to the same connected network."""
+    """Disjoint Set Union - tracks which accounts belong to the same connected network."""
 
     def __init__(self):
         self.parent = {}
@@ -25,7 +25,7 @@ class DSU:
         root_x, root_y = self.find(x), self.find(y)
         if root_x == root_y:
             return
-        # union by rank — attach smaller tree under bigger tree
+        # union by rank - attach smaller tree under bigger tree
         if self.rank[root_x] < self.rank[root_y]:
             root_x, root_y = root_y, root_x
         self.parent[root_y] = root_x
@@ -47,6 +47,10 @@ class DSUDetector:
             root = dsu.find(account_id)
             clusters[root].add(account_id)
 
+        cluster_txn_ids = defaultdict(list)
+        for txn in transactions:
+            cluster_txn_ids[dsu.find(txn.sender_account_id)].append(txn.id)
+
         signals = []
         for root, members in clusters.items():
             if len(members) >= MIN_CLUSTER_SIZE:
@@ -55,6 +59,8 @@ class DSUDetector:
                         detector_name="dsu",
                         description=f"Connected network of {len(members)} accounts detected (cluster root: {root})",
                         severity="medium",
+                        related_account_ids=sorted(members),
+                        related_transaction_ids=cluster_txn_ids[root],
                     )
                 )
 
