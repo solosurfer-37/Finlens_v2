@@ -28,8 +28,9 @@ def make_detector(accounts: dict[int, str], flagged: set[str]):
     return detector, db
 
 
-def make_txn(ref: str, sender: int, receiver: int) -> SimpleNamespace:
+def make_txn(ref: str, sender: int, receiver: int, txn_id: int = 0) -> SimpleNamespace:
     return SimpleNamespace(
+        id=txn_id,
         transaction_reference=ref,
         sender_account_id=sender,
         receiver_account_id=receiver,
@@ -90,3 +91,11 @@ def test_each_transaction_is_flagged_separately():
     assert len(signals) == 2
     assert "T1" in signals[0].description
     assert "T2" in signals[1].description
+
+
+def test_related_ids_cover_both_accounts_and_the_transaction():
+    detector, _ = make_detector(ACCOUNTS, {"ACC-001"})
+    signals = detector.detect([make_txn("T1", 1, 2, txn_id=77)])
+
+    assert signals[0].related_account_ids == [1, 2]
+    assert signals[0].related_transaction_ids == [77]

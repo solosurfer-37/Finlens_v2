@@ -5,6 +5,7 @@ from app.models.account import Account
 from app.models.transaction import Transaction
 from app.repositories.watchlist_repository import WatchlistRepository
 
+
 class WatchlistDetector:
     """Flags transactions involving accounts on the watchlist."""
 
@@ -21,6 +22,7 @@ class WatchlistDetector:
         for txn in transactions:
             sender = self.db.get(Account, txn.sender_account_id)
             receiver = self.db.get(Account, txn.receiver_account_id)
+            related_accounts = [txn.sender_account_id, txn.receiver_account_id]
 
             if sender and sender.account_number in flagged_numbers:
                 signals.append(
@@ -28,6 +30,8 @@ class WatchlistDetector:
                         detector_name="watchlist",
                         description=f"Transaction {txn.transaction_reference} involves watchlisted sender {sender.account_number}",
                         severity="high",
+                        related_account_ids=related_accounts,
+                        related_transaction_ids=[txn.id],
                     )
                 )
 
@@ -37,6 +41,8 @@ class WatchlistDetector:
                         detector_name="watchlist",
                         description=f"Transaction {txn.transaction_reference} involves watchlisted receiver {receiver.account_number}",
                         severity="high",
+                        related_account_ids=related_accounts,
+                        related_transaction_ids=[txn.id],
                     )
                 )
 
