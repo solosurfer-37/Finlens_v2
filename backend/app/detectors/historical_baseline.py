@@ -30,14 +30,13 @@ class HistoricalBaselineDetector:
 
     def detect(self, transactions: list[Transaction]) -> list[FraudSignal]:
         signals = []
-        checked_accounts = set()
+        baselines: dict[int, tuple[Decimal, int]] = {}
 
         for txn in transactions:
-            if txn.sender_account_id in checked_accounts:
-                continue
-            checked_accounts.add(txn.sender_account_id)
-
-            avg_amount, history_count = self._get_historical_average(txn.sender_account_id)
+            sender_id = txn.sender_account_id
+            if sender_id not in baselines:
+                baselines[sender_id] = self._get_historical_average(sender_id)
+            avg_amount, history_count = baselines[sender_id]
 
             if history_count < MIN_HISTORY_COUNT:
                 continue  # not enough history to trust this baseline
@@ -46,8 +45,10 @@ class HistoricalBaselineDetector:
                 signals.append(
                     FraudSignal(
                         detector_name="historical_baseline",
-                        description=f"Transaction {txn.transaction_reference} of {txn.amount} is {DEVIATION_MULTIPLIER}x above account {txn.sender_account_id}'s historical average ({avg_amount:.2f})",
+                        description=f"Transaction {txn.transaction_reference} of {txn.amount} is {DEVIATION_MULTIPLIER}x above account {sender_id}'s historical average ({avg_amount:.2f})",
                         severity="medium",
+                        related_account_ids=[sender_id, txn.receiver_account_id],
+                        related_transaction_ids=[txn.id],
                     )
                 )
 

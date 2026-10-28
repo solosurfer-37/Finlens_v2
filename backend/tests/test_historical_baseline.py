@@ -29,16 +29,22 @@ class FakeDB:
 
 def make_detector(history: dict[int, tuple[Decimal, int]]) -> HistoricalBaselineDetector:
     detector = HistoricalBaselineDetector(db=None)
-    detector._get_historical_average = lambda account_id: history.get(
-        account_id, (Decimal("0"), 0)
-    )
+    detector.lookups = []
+
+    def fake_average(account_id):
+        detector.lookups.append(account_id)
+        return history.get(account_id, (Decimal("0"), 0))
+
+    detector._get_historical_average = fake_average
     return detector
 
 
-def make_txn(ref: str, sender: int, amount: str) -> SimpleNamespace:
+def make_txn(ref: str, sender: int, amount: str, receiver: int = 99, txn_id: int = 0) -> SimpleNamespace:
     return SimpleNamespace(
+        id=txn_id,
         transaction_reference=ref,
         sender_account_id=sender,
+        receiver_account_id=receiver,
         amount=Decimal(amount),
     )
 
@@ -90,13 +96,29 @@ def test_each_sender_is_checked_with_own_baseline():
     assert "T1" in signals[0].description
 
 
-def test_only_first_transaction_per_sender_is_checked_known_gap():
-    # Known gap: later transactions from the same sender are skipped.
-    # When fixed, this should return 1 signal for T2 and the assertion must change.
+def test_every_transaction_of_a_sender_is_checked():
     detector = make_detector({1: (AVG, 10)})
     txns = [make_txn("T1", 1, "100"), make_txn("T2", 1, "10000")]
+    signals = detector.detect(txns)
 
-    assert detector.detect(txns) == []
+    assert len(signals) == 1
+    assert "T2" in signals[0].description
+
+
+def test_baseline_is_looked_up_once_per_sender():
+    detector = make_detector({1: (AVG, 10)})
+    txns = [make_txn(f"T{i}", 1, "100") for i in range(5)]
+    detector.detect(txns)
+
+    assert detector.lookups == [1]
+
+
+def test_related_ids_cover_sender_receiver_and_transaction():
+    detector = make_detector({1: (AVG, 10)})
+    signals = detector.detect([make_txn("T1", 1, "10000", receiver=7, txn_id=42)])
+
+    assert signals[0].related_account_ids == [1, 7]
+    assert signals[0].related_transaction_ids == [42]
 
 
 def test_historical_average_handles_no_rows():
