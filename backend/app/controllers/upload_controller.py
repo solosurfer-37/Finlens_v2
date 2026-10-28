@@ -38,7 +38,7 @@ class UploadController:
             user_id=user_id,
         )
 
-        transaction_service = TransactionService(self.db)
+        transaction_service = TransactionService(self.db, user_id)
         transaction_service.process_rows(investigation.id, rows)
 
         transactions = self.transaction_repo.get_by_investigation(investigation.id)

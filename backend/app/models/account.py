@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -12,13 +12,21 @@ if TYPE_CHECKING:
 
 class Account(Base):
     """
-    Represents a bank account involved in one or more investigations.
+    Represents a bank account owned by one user's data scope.
 
-    An account can act as a sender or receiver
-    in multiple transactions.
+    The same account number may exist for different users;
+    it is unique only within a single user.
     """
 
     __tablename__ = "accounts"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "account_number",
+            name="uq_account_user_account_number",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -26,9 +34,14 @@ class Account(Base):
         index=True,
     )
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
     account_number: Mapped[str] = mapped_column(
         String(100),
-        unique=True,
         nullable=False,
         index=True,
     )

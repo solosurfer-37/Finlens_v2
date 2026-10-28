@@ -9,17 +9,21 @@ from app.schemas.transaction_schema import TransactionCreate
 class TransactionService:
     """
     Orchestrates account resolution + transaction creation
-    from parsed CSV rows. Contains business logic —
+    from parsed CSV rows. Contains business logic -
     repositories only handle raw DB access.
+
+    Accounts are resolved within the owning user's scope, so two users
+    uploading the same account number never share an account row.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: int):
+        self.user_id = user_id
         self.account_repo = AccountRepository(db)
         self.transaction_repo = TransactionRepository(db)
 
     def _resolve_account(self, account_number: str, holder: str, bank: str) -> int:
-        """Returns existing account's ID, or creates a new one."""
-        account = self.account_repo.get_by_account_number(account_number)
+        """Returns this user's existing account ID, or creates a new one."""
+        account = self.account_repo.get_by_account_number(self.user_id, account_number)
         if account:
             return account.id
 
@@ -28,7 +32,8 @@ class TransactionService:
                 account_number=account_number,
                 account_holder=holder,
                 bank_name=bank,
-            )
+            ),
+            user_id=self.user_id,
         )
         return new_account.id
 

@@ -11,11 +11,15 @@ from app.models.user import User
 from app.services.transaction_service import TransactionService
 
 
-def make_investigation(db) -> int:
-    user = User(email="svc@finlens.com", hashed_password="x")
+def make_user(db, email: str = "svc@finlens.com") -> int:
+    user = User(email=email, hashed_password="x")
     db.add(user)
     db.commit()
-    inv = Investigation(user_id=user.id, filename="svc.csv")
+    return user.id
+
+
+def make_investigation(db, user_id: int, filename: str = "svc.csv") -> int:
+    inv = Investigation(user_id=user_id, filename=filename)
     db.add(inv)
     db.commit()
     return inv.id
@@ -41,15 +45,19 @@ def account_count(db) -> int:
 
 
 def test_resolve_account_creates_new_account(db):
-    service = TransactionService(db)
+    user_id = make_user(db)
+    service = TransactionService(db, user_id)
     account_id = service._resolve_account("ACC-NEW", "Alice", "BankX")
 
-    assert db.get(Account, account_id).account_number == "ACC-NEW"
+    account = db.get(Account, account_id)
+    assert account.account_number == "ACC-NEW"
+    assert account.user_id == user_id
     assert account_count(db) == 1
 
 
 def test_resolve_account_reuses_existing_account(db):
-    service = TransactionService(db)
+    user_id = make_user(db)
+    service = TransactionService(db, user_id)
     first = service._resolve_account("ACC-1", "Alice", "BankX")
     second = service._resolve_account("ACC-1", "Alice", "BankX")
 
@@ -57,33 +65,72 @@ def test_resolve_account_reuses_existing_account(db):
     assert account_count(db) == 1
 
 
+def test_same_account_number_for_two_users_gives_separate_accounts(db):
+    user_a = make_user(db, "a@finlens.com")
+    user_b = make_user(db, "b@finlens.com")
+
+    id_a = TransactionService(db, user_a)._resolve_account("ACC-SHARED", "Alice", "BankX")
+    id_b = TransactionService(db, user_b)._resolve_account("ACC-SHARED", "Mallory", "BankZ")
+
+    assert id_a != id_b
+    assert db.get(Account, id_a).account_holder == "Alice"
+    assert db.get(Account, id_b).account_holder == "Mallory"
+    assert account_count(db) == 2
+
+
+def test_user_never_gets_other_users_account(db):
+    user_a = make_user(db, "a@finlens.com")
+    user_b = make_user(db, "b@finlens.com")
+    id_a = TransactionService(db, user_a)._resolve_account("ACC-1", "Alice", "BankX")
+
+    id_b = TransactionService(db, user_b)._resolve_account("ACC-1", "Bob", "BankY")
+
+    assert db.get(Account, id_b).user_id == user_b
+    assert id_b != id_a
+
+
+def test_duplicate_account_number_within_same_user_is_rejected(db):
+    user_id = make_user(db)
+    db.add(Account(user_id=user_id, account_number="ACC-1", account_holder="A", bank_name="B"))
+    db.commit()
+    db.add(Account(user_id=user_id, account_number="ACC-1", account_holder="C", bank_name="D"))
+
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
+
+
 def test_process_rows_returns_count_and_saves_transactions(db):
-    inv_id = make_investigation(db)
+    user_id = make_user(db)
+    inv_id = make_investigation(db, user_id)
     rows = [make_row("T1"), make_row("T2", sender="ACC-C")]
 
-    created = TransactionService(db).process_rows(inv_id, rows)
+    created = TransactionService(db, user_id).process_rows(inv_id, rows)
 
     assert created == 2
     assert db.query(Transaction).filter_by(investigation_id=inv_id).count() == 2
 
 
 def test_process_rows_shares_accounts_across_rows(db):
-    inv_id = make_investigation(db)
+    user_id = make_user(db)
+    inv_id = make_investigation(db, user_id)
     rows = [make_row("T1"), make_row("T2"), make_row("T3")]
 
-    TransactionService(db).process_rows(inv_id, rows)
+    TransactionService(db, user_id).process_rows(inv_id, rows)
 
     assert account_count(db) == 2
 
 
 def test_process_rows_empty_list_returns_zero(db):
-    inv_id = make_investigation(db)
-    assert TransactionService(db).process_rows(inv_id, []) == 0
+    user_id = make_user(db)
+    inv_id = make_investigation(db, user_id)
+    assert TransactionService(db, user_id).process_rows(inv_id, []) == 0
 
 
 def test_duplicate_reference_in_same_investigation_is_rejected(db):
-    inv_id = make_investigation(db)
-    service = TransactionService(db)
+    user_id = make_user(db)
+    inv_id = make_investigation(db, user_id)
+    service = TransactionService(db, user_id)
     service.process_rows(inv_id, [make_row("T1")])
 
     with pytest.raises(IntegrityError):
@@ -94,13 +141,12 @@ def test_duplicate_reference_in_same_investigation_is_rejected(db):
 
 
 def test_same_reference_allowed_in_different_investigations(db):
-    inv_a = make_investigation(db)
-    inv_b_inv = Investigation(user_id=db.query(User).first().id, filename="b.csv")
-    db.add(inv_b_inv)
-    db.commit()
+    user_id = make_user(db)
+    inv_a = make_investigation(db, user_id, "a.csv")
+    inv_b = make_investigation(db, user_id, "b.csv")
 
-    service = TransactionService(db)
+    service = TransactionService(db, user_id)
     service.process_rows(inv_a, [make_row("T1")])
-    service.process_rows(inv_b_inv.id, [make_row("T1")])
+    service.process_rows(inv_b, [make_row("T1")])
 
     assert db.query(Transaction).count() == 2
