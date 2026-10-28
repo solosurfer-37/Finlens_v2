@@ -11,9 +11,11 @@ class FanOutDetector:
 
     def detect(self, transactions: list[Transaction]) -> list[FraudSignal]:
         sender_to_receivers = defaultdict(set)
+        sender_to_txn_ids = defaultdict(list)
 
         for txn in transactions:
             sender_to_receivers[txn.sender_account_id].add(txn.receiver_account_id)
+            sender_to_txn_ids[txn.sender_account_id].append(txn.id)
 
         signals = []
         for sender_id, receivers in sender_to_receivers.items():
@@ -23,6 +25,8 @@ class FanOutDetector:
                         detector_name="fan_out",
                         description=f"Account {sender_id} sent money to {len(receivers)} unique accounts",
                         severity="medium",
+                        related_account_ids=[sender_id, *sorted(receivers)],
+                        related_transaction_ids=sender_to_txn_ids[sender_id],
                     )
                 )
 
