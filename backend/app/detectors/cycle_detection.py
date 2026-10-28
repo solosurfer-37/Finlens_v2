@@ -9,8 +9,10 @@ class CycleDetectionDetector:
 
     def detect(self, transactions: list[Transaction]) -> list[FraudSignal]:
         graph = defaultdict(set)
+        edge_txn_ids = defaultdict(list)
         for txn in transactions:
             graph[txn.sender_account_id].add(txn.receiver_account_id)
+            edge_txn_ids[(txn.sender_account_id, txn.receiver_account_id)].append(txn.id)
 
         signals = []
         visited_cycles = set()
@@ -27,10 +29,21 @@ class CycleDetectionDetector:
                             detector_name="cycle_detection",
                             description=f"Circular money flow detected: {path}",
                             severity="high",
+                            related_account_ids=list(cycle),
+                            related_transaction_ids=self._cycle_txn_ids(cycle, edge_txn_ids),
                         )
                     )
 
         return signals
+
+    @staticmethod
+    def _cycle_txn_ids(cycle: list[int], edge_txn_ids: dict) -> list[int]:
+        """Transaction ids on the cycle's edges, including the closing edge."""
+        txn_ids = []
+        for i, node in enumerate(cycle):
+            next_node = cycle[(i + 1) % len(cycle)]
+            txn_ids.extend(edge_txn_ids.get((node, next_node), []))
+        return txn_ids
 
     def _find_cycle(self, graph, start, current, visited, path=None):
         if path is None:

@@ -3,12 +3,12 @@ from types import SimpleNamespace
 from app.detectors.cycle_detection import CycleDetectionDetector
 
 
-def make_txn(sender: int, receiver: int) -> SimpleNamespace:
-    return SimpleNamespace(sender_account_id=sender, receiver_account_id=receiver)
+def make_txn(sender: int, receiver: int, txn_id: int) -> SimpleNamespace:
+    return SimpleNamespace(id=txn_id, sender_account_id=sender, receiver_account_id=receiver)
 
 
 def edges(*pairs: tuple[int, int]) -> list[SimpleNamespace]:
-    return [make_txn(s, r) for s, r in pairs]
+    return [make_txn(s, r, i + 1) for i, (s, r) in enumerate(pairs)]
 
 
 def test_empty_transactions_returns_no_signals():
@@ -58,3 +58,23 @@ def test_two_disjoint_cycles_give_two_signals():
 def test_duplicate_edges_do_not_create_extra_signals():
     txns = edges((1, 2), (2, 1), (1, 2), (2, 1), (1, 2))
     assert len(CycleDetectionDetector().detect(txns)) == 1
+
+
+def test_related_account_ids_are_the_cycle_nodes():
+    signals = CycleDetectionDetector().detect(edges((1, 2), (2, 3), (3, 1)))
+
+    assert signals[0].related_account_ids == [1, 2, 3]
+
+
+def test_related_transaction_ids_cover_all_cycle_edges():
+    signals = CycleDetectionDetector().detect(edges((1, 2), (2, 3), (3, 1)))
+
+    assert sorted(signals[0].related_transaction_ids) == [1, 2, 3]
+
+
+def test_transaction_feeding_into_cycle_is_not_related():
+    txns = edges((4, 1), (1, 2), (2, 3), (3, 1))
+    signals = CycleDetectionDetector().detect(txns)
+
+    assert 1 not in signals[0].related_transaction_ids
+    assert sorted(signals[0].related_transaction_ids) == [2, 3, 4]
