@@ -58,12 +58,10 @@ def test_different_days_or_receivers_do_not_group():
     assert StructuringDetector().detect(different_receivers) == []
 
 
-def test_signal_fields_and_known_gap_in_related_ids():
+def test_signal_fields_and_related_ids():
     signal = StructuringDetector().detect(near_threshold_batch(3))[0]
     assert signal.detector_name == "structuring"
     assert signal.severity == "high"
     assert "2700000" in signal.description
-    # Known tech debt: structuring does not populate related ids yet.
-    # When fixed, update this assertion to check the real ids.
-    assert not signal.related_account_ids
-    assert not signal.related_transaction_ids
+    assert signal.related_account_ids == [1, 2]
+    assert sorted(signal.related_transaction_ids) == [1, 2, 3]

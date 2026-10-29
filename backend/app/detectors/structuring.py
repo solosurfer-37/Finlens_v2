@@ -29,6 +29,8 @@ class StructuringDetector:
                         detector_name="structuring",
                         description=f"Account {sender_id} sent {len(txns)} near-threshold transactions to {receiver_id} on {day} (total: {total})",
                         severity="high",
+                        related_account_ids=[sender_id, receiver_id],
+                        related_transaction_ids=[t.id for t in txns],
                     )
                 )
 
