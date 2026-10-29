@@ -5,10 +5,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN useradd --create-home --uid 1000 appuser
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY --chown=appuser:appuser . .
+
+RUN mkdir -p /app/uploads && chown appuser:appuser /app/uploads
+
+USER appuser
 
 EXPOSE 8000
 
