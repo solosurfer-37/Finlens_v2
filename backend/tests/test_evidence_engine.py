@@ -77,9 +77,8 @@ def test_evidence_rows_are_persisted(db):
     assert {r.risk_score_contribution for r in rows} == {Decimal("30"), Decimal("5")}
 
 
-def test_unknown_severity_raises_key_error_known_gap(db):
-    # Known gap: an unexpected severity crashes the pipeline.
-    # When fixed (validate/skip), this assertion must change.
+def test_unknown_severity_raises_clear_value_error(db):
     inv_id = make_investigation(db)
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="Unknown severity 'critical'"):
         EvidenceEngine(db).process(inv_id, [sig("critical")])
+    assert db.query(Evidence).filter_by(investigation_id=inv_id).count() == 0

@@ -30,6 +30,12 @@ class EvidenceEngine:
         Persists all signals as evidence, updates investigation risk score,
         and returns the final risk score.
         """
+        for signal in signals:
+            if signal.severity not in SEVERITY_SCORES:
+                raise ValueError(
+                    f"Unknown severity '{signal.severity}' from detector '{signal.detector_name}'"
+                )
+
         evidence_list = [
             Evidence(
                 investigation_id=investigation_id,
