@@ -3,14 +3,14 @@ from types import SimpleNamespace
 from app.detectors.watchlist import WatchlistDetector
 
 
-class FakeDB:
+class FakeAccountRepo:
     def __init__(self, accounts: dict[int, str]):
-        self.accounts = {i: SimpleNamespace(account_number=n) for i, n in accounts.items()}
-        self.get_calls = 0
+        self.accounts = {i: SimpleNamespace(id=i, account_number=n) for i, n in accounts.items()}
+        self.calls = 0
 
-    def get(self, model, account_id):
-        self.get_calls += 1
-        return self.accounts.get(account_id)
+    def get_by_ids(self, account_ids):
+        self.calls += 1
+        return {i: self.accounts[i] for i in account_ids if i in self.accounts}
 
 
 class FakeRepo:
@@ -22,10 +22,10 @@ class FakeRepo:
 
 
 def make_detector(accounts: dict[int, str], flagged: set[str]):
-    db = FakeDB(accounts)
-    detector = WatchlistDetector(db)
+    detector = WatchlistDetector(None)
     detector.watchlist_repo = FakeRepo(flagged)
-    return detector, db
+    detector.account_repo = FakeAccountRepo(accounts)
+    return detector, detector.account_repo
 
 
 def make_txn(ref: str, sender: int, receiver: int, txn_id: int = 0) -> SimpleNamespace:
@@ -41,10 +41,19 @@ ACCOUNTS = {1: "ACC-001", 2: "ACC-002", 3: "ACC-003"}
 
 
 def test_empty_watchlist_returns_nothing_and_skips_lookups():
-    detector, db = make_detector(ACCOUNTS, set())
+    detector, account_repo = make_detector(ACCOUNTS, set())
 
     assert detector.detect([make_txn("T1", 1, 2)]) == []
-    assert db.get_calls == 0
+    assert account_repo.calls == 0
+
+
+def test_accounts_are_fetched_in_one_bulk_call():
+    detector, account_repo = make_detector(ACCOUNTS, {"ACC-001"})
+    txns = [make_txn("T1", 1, 2), make_txn("T2", 2, 3), make_txn("T3", 3, 1)]
+
+    detector.detect(txns)
+
+    assert account_repo.calls == 1
 
 
 def test_no_watchlisted_accounts_returns_nothing():
