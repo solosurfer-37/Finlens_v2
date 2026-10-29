@@ -17,7 +17,7 @@ def get_cache(key: str) -> dict | list | None:
 
 def set_cache(key: str, value: dict | list, ttl_seconds: int = 300) -> None:
     """Stores value as JSON with a time-to-live (default 5 minutes)."""
-    redis_client.setex(key, ttl_seconds, json.dumps(value))
+    redis_client.set(key, json.dumps(value), ex=ttl_seconds)
 
 
 def delete_cache(key: str) -> None:
