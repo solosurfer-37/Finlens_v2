@@ -27,11 +27,14 @@ class VelocityDetector:
                     if txns[i].transaction_time <= t.transaction_time <= txns[i].transaction_time + VELOCITY_WINDOW
                 ]
                 if len(window_txns) >= VELOCITY_THRESHOLD:
+                    receiver_ids = {t.receiver_account_id for t in window_txns}
                     signals.append(
                         FraudSignal(
                             detector_name="velocity",
                             description=f"Account {sender_id} made {len(window_txns)} transactions within 1 hour",
                             severity="medium",
+                            related_account_ids=sorted({sender_id} | receiver_ids),
+                            related_transaction_ids=[t.id for t in window_txns],
                         )
                     )
                     break  # one signal per account is enough

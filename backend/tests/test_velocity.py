@@ -56,11 +56,10 @@ def test_unsorted_input_is_handled():
     assert len(VelocityDetector().detect(txns)) == 1
 
 
-def test_signal_fields_and_known_gap_in_related_ids():
+def test_signal_fields_and_related_ids():
     signal = VelocityDetector().detect(burst(5))[0]
     assert signal.detector_name == "velocity"
     assert signal.severity == "medium"
     assert "5 transactions" in signal.description
-    # Known tech debt: velocity does not populate related ids yet.
-    assert not signal.related_account_ids
-    assert not signal.related_transaction_ids
+    assert signal.related_account_ids == [1, 2]
+    assert sorted(signal.related_transaction_ids) == [0, 1, 2, 3, 4]
