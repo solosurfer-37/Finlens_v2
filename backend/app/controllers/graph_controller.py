@@ -47,10 +47,7 @@ class GraphController:
             account_ids.add(txn.sender_account_id)
             account_ids.add(txn.receiver_account_id)
 
-        accounts = {
-            account_id: self.account_repo.get_by_id(account_id)
-            for account_id in account_ids
-        }
+        accounts = self.account_repo.get_by_ids(account_ids)
 
         evidence_list = self.evidence_repo.get_by_investigation(investigation_id)
         signals = [

@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.account import Account
@@ -17,6 +18,12 @@ class AccountRepository:
 
     def get_by_id(self, account_id: int) -> Account | None:
         return self.db.get(Account, account_id)
+
+    def get_by_ids(self, account_ids: set[int] | list[int]) -> dict[int, Account]:
+        if not account_ids:
+            return {}
+        stmt = select(Account).where(Account.id.in_(account_ids))
+        return {account.id: account for account in self.db.scalars(stmt).all()}
 
     def get_by_account_number(self, user_id: int, account_number: str) -> Account | None:
         return self.db.query(Account).filter(
