@@ -18,14 +18,15 @@ class BenfordDetector:
         if len(transactions) < MIN_TRANSACTIONS:
             return []  # not enough data for a statistically meaningful check
 
-        leading_digits = [
-            d for d in (self._leading_digit(txn.amount) for txn in transactions) if d
+        txns_with_digit = [
+            (txn, self._leading_digit(txn.amount)) for txn in transactions
         ]
-        total = len(leading_digits)
+        txns_with_digit = [(txn, d) for txn, d in txns_with_digit if d]
+        total = len(txns_with_digit)
         if total == 0:
             return []  # all amounts were zero, nothing to analyse
 
-        counts = Counter(leading_digits)
+        counts = Counter(d for _, d in txns_with_digit)
 
         signals = []
         for digit in range(1, 10):
@@ -34,11 +35,22 @@ class BenfordDetector:
             deviation = abs(observed - expected)
 
             if deviation > DEVIATION_THRESHOLD:
+                account_ids: list[int] = []
+                txn_ids: list[int] = []
+                if observed > expected:
+                    # Only over-represented digits point at concrete transactions.
+                    flagged = [txn for txn, d in txns_with_digit if d == digit]
+                    txn_ids = [txn.id for txn in flagged]
+                    account_ids = sorted(
+                        {a for txn in flagged for a in (txn.sender_account_id, txn.receiver_account_id)}
+                    )
                 signals.append(
                     FraudSignal(
                         detector_name="benford",
                         description=f"Leading digit {digit} appears {observed:.1%} of the time (expected {expected:.1%}) - possible manipulated data",
                         severity="medium",
+                        related_account_ids=account_ids,
+                        related_transaction_ids=txn_ids,
                     )
                 )
 
