@@ -23,3 +23,18 @@ def test_bad_upload_leaves_no_orphan_investigation(client, auth_headers):
     headers = auth_headers("bad3@finlens.com")
     bad_upload(client, headers, b"foo,bar\n1,2\n")
     assert client.get("/investigations/", headers=headers).json() == []
+
+
+def test_pipeline_failure_marks_investigation_failed(client, auth_headers, sample_csv, monkeypatch):
+    def boom(self, transactions):
+        raise RuntimeError("detector exploded")
+
+    monkeypatch.setattr("app.engine.detection_engine.DetectionEngine.run", boom)
+    headers = auth_headers("bad4@finlens.com")
+
+    response = bad_upload(client, headers, sample_csv)
+
+    assert response.status_code == 500
+    investigations = client.get("/investigations/", headers=headers).json()
+    assert len(investigations) == 1
+    assert investigations[0].get("status") == "Failed"

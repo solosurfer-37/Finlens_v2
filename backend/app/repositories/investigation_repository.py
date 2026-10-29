@@ -50,6 +50,12 @@ class InvestigationRepository:
             investigation.total_transactions = count
             self.db.commit()
 
+    def mark_failed(self, investigation_id: int) -> None:
+        investigation = self.db.get(Investigation, investigation_id)
+        if investigation:
+            investigation.status = "Failed"
+            self.db.commit()
+
     def delete(self, investigation: Investigation) -> None:
         self.db.delete(investigation)
         self.db.commit()

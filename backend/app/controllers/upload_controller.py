@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
@@ -14,6 +15,8 @@ from app.engine.detection_engine import DetectionEngine
 from app.engine.evidence_engine import EvidenceEngine
 from app.engine.report_engine import ReportEngine
 from app.schemas.upload_schema import UploadResponse
+
+logger = logging.getLogger(__name__)
 
 
 class UploadController:
@@ -37,25 +40,36 @@ class UploadController:
             InvestigationCreate(filename=display_name),
             user_id=user_id,
         )
+        investigation_id = investigation.id
 
-        transaction_service = TransactionService(self.db, user_id)
-        transaction_service.process_rows(investigation.id, rows)
+        try:
+            transaction_service = TransactionService(self.db, user_id)
+            transaction_service.process_rows(investigation_id, rows)
 
-        transactions = self.transaction_repo.get_by_investigation(investigation.id)
-        self.investigation_repo.update_transaction_count(investigation.id, len(transactions))
+            transactions = self.transaction_repo.get_by_investigation(investigation_id)
+            self.investigation_repo.update_transaction_count(investigation_id, len(transactions))
 
-        detection_engine = DetectionEngine(self.db)
-        signals = detection_engine.run(transactions)
+            detection_engine = DetectionEngine(self.db)
+            signals = detection_engine.run(transactions)
 
-        evidence_engine = EvidenceEngine(self.db)
-        final_score = evidence_engine.process(investigation.id, signals)
+            evidence_engine = EvidenceEngine(self.db)
+            final_score = evidence_engine.process(investigation_id, signals)
 
-        evidence_list = self.evidence_repo.get_by_investigation(investigation.id)
-        report_engine = ReportEngine(self.db)
-        report_engine.generate(investigation.id, evidence_list)
+            evidence_list = self.evidence_repo.get_by_investigation(investigation_id)
+            report_engine = ReportEngine(self.db)
+            report_engine.generate(investigation_id, evidence_list)
+        except Exception:
+            logger.exception("Upload pipeline failed for investigation %s", investigation_id)
+            self.db.rollback()
+            self.investigation_repo.mark_failed(investigation_id)
+            file_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=500,
+                detail="Investigation processing failed",
+            )
 
         return UploadResponse(
-            investigation_id=investigation.id,
+            investigation_id=investigation_id,
             total_transactions=len(transactions),
             risk_score=float(final_score),
             message="Investigation completed successfully",
