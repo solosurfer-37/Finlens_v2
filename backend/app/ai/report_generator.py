@@ -1,6 +1,10 @@
+import logging
+
 from app.ai.gemini_client import GeminiClient
 from app.ai.prompts import build_report_prompt
 from app.models.evidence import Evidence
+
+logger = logging.getLogger(__name__)
 
 
 class AIReportGenerator:
@@ -24,4 +28,8 @@ class AIReportGenerator:
         try:
             return self.client.generate(prompt)
         except Exception:
+            logger.warning(
+                "Gemini report generation failed, using fallback text",
+                exc_info=True,
+            )
             return fallback_text
