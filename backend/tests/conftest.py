@@ -92,3 +92,9 @@ def mock_gemini(monkeypatch):
         raise RuntimeError("Gemini disabled in tests")
 
     monkeypatch.setattr("app.ai.gemini_client.GeminiClient.generate", _fail)
+
+
+@pytest.fixture(autouse=True)
+def isolated_upload_dir(tmp_path, monkeypatch):
+    """Keep test uploads out of the repo's uploads/ folder."""
+    monkeypatch.setattr(settings, "upload_directory", str(tmp_path / "uploads"))
