@@ -1,7 +1,10 @@
 from collections import defaultdict
+from collections.abc import Iterator
 
 from app.engine.fraud_signal import FraudSignal
 from app.models.transaction import Transaction
+
+MAX_CYCLES = 50  # safety cap so dense graphs cannot blow up the upload pipeline
 
 
 class CycleDetectionDetector:
@@ -15,26 +18,35 @@ class CycleDetectionDetector:
             edge_txn_ids[(txn.sender_account_id, txn.receiver_account_id)].append(txn.id)
 
         signals = []
-        visited_cycles = set()
+        seen_cycles = set()
 
         for start_node in graph:
-            cycle = self._find_cycle(graph, start_node, start_node, set())
-            if cycle:
-                cycle_key = frozenset(cycle)
-                if cycle_key not in visited_cycles:
-                    visited_cycles.add(cycle_key)
-                    path = " -> ".join(str(n) for n in cycle)
-                    signals.append(
-                        FraudSignal(
-                            detector_name="cycle_detection",
-                            description=f"Circular money flow detected: {path}",
-                            severity="high",
-                            related_account_ids=list(cycle),
-                            related_transaction_ids=self._cycle_txn_ids(cycle, edge_txn_ids),
-                        )
+            for cycle in self._find_cycles(graph, start_node, start_node, []):
+                canonical = self._canonical(cycle)
+                if canonical in seen_cycles:
+                    continue
+                seen_cycles.add(canonical)
+
+                path = " -> ".join(str(n) for n in canonical)
+                signals.append(
+                    FraudSignal(
+                        detector_name="cycle_detection",
+                        description=f"Circular money flow detected: {path}",
+                        severity="high",
+                        related_account_ids=list(canonical),
+                        related_transaction_ids=self._cycle_txn_ids(list(canonical), edge_txn_ids),
                     )
+                )
+                if len(signals) >= MAX_CYCLES:
+                    return signals
 
         return signals
+
+    @staticmethod
+    def _canonical(cycle: list[int]) -> tuple[int, ...]:
+        """Rotate the cycle so it starts at its smallest node (same cycle, same key)."""
+        smallest = cycle.index(min(cycle))
+        return tuple(cycle[smallest:] + cycle[:smallest])
 
     @staticmethod
     def _cycle_txn_ids(cycle: list[int], edge_txn_ids: dict) -> list[int]:
@@ -45,19 +57,11 @@ class CycleDetectionDetector:
             txn_ids.extend(edge_txn_ids.get((node, next_node), []))
         return txn_ids
 
-    def _find_cycle(self, graph, start, current, visited, path=None):
-        if path is None:
-            path = []
-
+    def _find_cycles(self, graph, start, current, path) -> Iterator[list[int]]:
         path = path + [current]
-        visited = visited | {current}
 
         for neighbor in graph.get(current, set()):
             if neighbor == start and len(path) > 1:
-                return path
-            if neighbor not in visited:
-                result = self._find_cycle(graph, start, neighbor, visited, path)
-                if result:
-                    return result
-
-        return None
+                yield path
+            elif neighbor not in path:
+                yield from self._find_cycles(graph, start, neighbor, path)

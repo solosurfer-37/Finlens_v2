@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from app.detectors.cycle_detection import CycleDetectionDetector
+from app.detectors.cycle_detection import MAX_CYCLES, CycleDetectionDetector
 
 
 def make_txn(sender: int, receiver: int, txn_id: int) -> SimpleNamespace:
@@ -78,3 +78,29 @@ def test_transaction_feeding_into_cycle_is_not_related():
 
     assert 1 not in signals[0].related_transaction_ids
     assert sorted(signals[0].related_transaction_ids) == [2, 3, 4]
+
+
+def test_multiple_cycles_through_same_start_node_are_all_found():
+    signals = CycleDetectionDetector().detect(edges((1, 2), (2, 1), (1, 3), (3, 1)))
+    descriptions = [s.description for s in signals]
+
+    assert len(signals) == 2
+    assert any("1 -> 2" in d for d in descriptions)
+    assert any("1 -> 3" in d for d in descriptions)
+
+
+def test_cycles_with_same_nodes_but_different_order_are_distinct():
+    txns = edges((1, 2), (2, 3), (3, 4), (4, 1), (1, 3), (3, 2), (2, 4))
+    signals = CycleDetectionDetector().detect(txns)
+    paths = {tuple(s.related_account_ids) for s in signals}
+
+    assert (1, 2, 3, 4) in paths
+    assert (1, 3, 2, 4) in paths
+
+
+def test_cycle_count_is_capped():
+    nodes = range(1, 8)
+    pairs = [(a, b) for a in nodes for b in nodes if a != b]
+    signals = CycleDetectionDetector().detect(edges(*pairs))
+
+    assert len(signals) == MAX_CYCLES
