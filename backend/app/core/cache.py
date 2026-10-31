@@ -22,3 +22,9 @@ def set_cache(key: str, value: dict | list, ttl_seconds: int = 300) -> None:
 
 def delete_cache(key: str) -> None:
     redis_client.delete(key)
+
+
+def invalidate_investigation_cache(user_id: int, investigation_id: int) -> None:
+    """Drop every cached view of one investigation (detail, graph, report)."""
+    for prefix in ("investigation", "graph", "report"):
+        delete_cache(f"{prefix}:{user_id}:{investigation_id}")

@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.cache import invalidate_investigation_cache
 from app.repositories.investigation_repository import InvestigationRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.repositories.evidence_repository import EvidenceRepository
@@ -62,11 +63,14 @@ class UploadController:
             logger.exception("Upload pipeline failed for investigation %s", investigation_id)
             self.db.rollback()
             self.investigation_repo.mark_failed(investigation_id)
+            invalidate_investigation_cache(user_id, investigation_id)
             file_path.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=500,
                 detail="Investigation processing failed",
             )
+
+        invalidate_investigation_cache(user_id, investigation_id)
 
         return UploadResponse(
             investigation_id=investigation_id,
